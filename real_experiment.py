@@ -111,11 +111,11 @@ class RealExperiment:
         # Initialize model
         self.model = GeometricBERT(config['model'], from_pretrained=True).to(self.device)
         
-        # Add MLM head
-        self.mlm_head = nn.Linear(
-            config['model']['hidden_size'], 
-            self.tokenizer.vocab_size
-        ).to(self.device)
+        # Load pretrained MLM head from BERT
+        from transformers import BertForMaskedLM
+        pretrained_bert_mlm = BertForMaskedLM.from_pretrained('bert-base-uncased')
+        self.mlm_head = pretrained_bert_mlm.cls.predictions
+        self.mlm_head = self.mlm_head.to(self.device)
         
         # Count parameters
         total_params = sum(p.numel() for p in self.model.parameters())
