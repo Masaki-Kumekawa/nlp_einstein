@@ -16,7 +16,7 @@ real: setup real-data real-experiment paper-real
 # 環境セットアップ
 setup:
 	@echo "🔧 環境セットアップ中..."
-	@pip install torch transformers scipy matplotlib seaborn pandas datasets pytest scikit-learn tqdm
+	@pip install torch transformers scipy matplotlib seaborn pandas datasets pytest scikit-learn tqdm requests
 	@mkdir -p data results output src checkpoints models
 	@echo "✅ 環境セットアップ完了"
 
@@ -24,6 +24,7 @@ setup:
 real-data:
 	@echo "📊 実際のデータセット準備中..."
 	@python download_real_datasets.py
+	@python download_full_datasets.py
 	@echo "✅ 実データ準備完了"
 
 # 実際の実験実行

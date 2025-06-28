@@ -269,7 +269,7 @@ class RealExperiment:
         similarity_results = {}
         
         # Evaluate on each dataset
-        for dataset_name in ['wordsim353', 'simlex999', 'scws_sample', 'cosimlx_sample']:
+        for dataset_name in ['wordsim353', 'simlex999', 'scws', 'cosimlx']:
             file_path = f'data/{dataset_name}.csv'
             
             if os.path.exists(file_path):
