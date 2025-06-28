@@ -20,11 +20,22 @@ class SimilarityEvaluator:
         
     def get_word_position(self, tokens, word):
         """Find position of word in tokenized sequence."""
-        word_tokens = self.tokenizer.tokenize(word)
-        for i in range(len(tokens) - len(word_tokens) + 1):
-            if tokens[i:i+len(word_tokens)] == word_tokens:
-                return i
-        return 0  # Default to first position if not found
+        # Convert word to string if it's not already
+        if not isinstance(word, str):
+            word = str(word)
+        
+        # Skip if word is too short or numeric
+        if len(word) < 2 or word.isdigit():
+            return 1  # Default to position 1 (after CLS token)
+            
+        try:
+            word_tokens = self.tokenizer.tokenize(word)
+            for i in range(len(tokens) - len(word_tokens) + 1):
+                if tokens[i:i+len(word_tokens)] == word_tokens:
+                    return i
+        except Exception:
+            pass
+        return 1  # Default to position 1 if not found
     
     def evaluate(self, dataset):
         """
@@ -40,10 +51,24 @@ class SimilarityEvaluator:
         
         with torch.no_grad():
             for _, row in dataset.iterrows():
-                word1, word2 = row['word1'], row['word2']
-                context1 = row.get('context1', f"The {word1} is here.")
-                context2 = row.get('context2', f"The {word2} is here.")
-                human_score = row['score']
+                try:
+                    word1, word2 = str(row['word1']), str(row['word2'])
+                    
+                    # Skip invalid entries
+                    if (len(word1) < 2 or len(word2) < 2 or 
+                        word1.isdigit() or word2.isdigit()):
+                        continue
+                        
+                    context1 = row.get('context1', f"The {word1} is here.")
+                    context2 = row.get('context2', f"The {word2} is here.")
+                    human_score = float(row['score'])
+                    
+                    # Convert contexts to strings
+                    context1 = str(context1)
+                    context2 = str(context2)
+                    
+                except (ValueError, KeyError, TypeError):
+                    continue
                 
                 # Tokenize contexts
                 tokens1 = self.tokenizer(context1, return_tensors='pt', padding=True, truncation=True)

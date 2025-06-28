@@ -132,12 +132,21 @@ class RealExperiment:
         """Train the geometric BERT model."""
         logger.info("Starting training...")
         
-        # Create dataset
-        train_dataset = WikiTextDataset(
+        # Create datasets with train/validation split
+        full_dataset = WikiTextDataset(
             self.tokenizer,
             file_path='data/wikitext_train.txt',
             max_length=self.config['training']['max_length'],
             num_samples=self.config['training']['num_samples']
+        )
+        
+        # Split into train/validation (80/20)
+        train_size = int(0.8 * len(full_dataset))
+        val_size = len(full_dataset) - train_size
+        
+        train_dataset, val_dataset = torch.utils.data.random_split(
+            full_dataset, [train_size, val_size],
+            generator=torch.Generator().manual_seed(self.config['seed'])
         )
         
         train_loader = DataLoader(
@@ -146,6 +155,15 @@ class RealExperiment:
             shuffle=True,
             num_workers=0
         )
+        
+        val_loader = DataLoader(
+            val_dataset,
+            batch_size=self.config['training']['batch_size'],
+            shuffle=False,
+            num_workers=0
+        )
+        
+        logger.info(f"Training samples: {len(train_dataset)}, Validation samples: {len(val_dataset)}")
         
         # Optimizer and scheduler
         optimizer = optim.AdamW(
@@ -232,11 +250,34 @@ class RealExperiment:
             
             avg_loss = epoch_loss / len(train_loader)
             train_losses.append(avg_loss)
-            logger.info(f"Epoch {epoch+1}: Average Loss = {avg_loss:.4f}")
             
-            # Early stopping check
-            if avg_loss < best_loss - min_improvement:
-                best_loss = avg_loss
+            # Validation evaluation
+            self.model.eval()
+            val_loss = 0
+            with torch.no_grad():
+                for val_batch in val_loader:
+                    val_input_ids = val_batch['input_ids'].to(self.device)
+                    val_attention_mask = val_batch['attention_mask'].to(self.device)
+                    val_labels = val_batch['labels'].to(self.device)
+                    
+                    val_outputs = self.model(val_input_ids, val_attention_mask)
+                    val_hidden_states = val_outputs['last_hidden_state']
+                    val_predictions = self.mlm_head(val_hidden_states)
+                    
+                    val_batch_loss = criterion(
+                        val_predictions.view(-1, self.tokenizer.vocab_size),
+                        val_labels.view(-1)
+                    )
+                    val_loss += val_batch_loss.item()
+            
+            avg_val_loss = val_loss / len(val_loader)
+            self.model.train()
+            
+            logger.info(f"Epoch {epoch+1}: Train Loss = {avg_loss:.4f}, Val Loss = {avg_val_loss:.4f}")
+            
+            # Early stopping check (using validation loss)
+            if avg_val_loss < best_loss - min_improvement:
+                best_loss = avg_val_loss
                 patience_counter = 0
                 logger.info(f"New best loss: {best_loss:.4f}")
                 # Save best model

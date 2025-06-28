@@ -63,6 +63,15 @@ paper-checkpoint:
 	@cd output && pdflatex paper.tex || echo "⚠️ PDF生成失敗：手動でpdflatex実行してください"
 	@echo "✅ チェックポイントからの論文生成完了"
 
+# ベストモデルから評価して論文生成
+paper-best:
+	@echo "🏆 ベストモデルから評価実行中..."
+	@python evaluate_best_model.py
+	@echo "📝 評価結果を基に論文生成中..."
+	@python generate_paper_from_real_results.py
+	@cd output && pdflatex paper.tex || echo "⚠️ PDF生成失敗：手動でpdflatex実行してください"
+	@echo "✅ ベストモデルからの論文生成完了"
+
 # 旧システム（デモ用）
 demo: setup demo-data demo-train demo-evaluate demo-paper
 	@echo "🎉 デモパイプライン完了！"
@@ -149,6 +158,7 @@ help:
 	@echo "  make real-experiment - 実験実行"
 	@echo "  make paper-real  - 実験結果から論文生成"
 	@echo "  make paper-checkpoint - チェックポイントから評価&論文生成"
+	@echo "  make paper-best      - ベストモデルから評価&論文生成"
 	@echo ""
 	@echo "その他:"
 	@echo "  make test        - テスト実行"
