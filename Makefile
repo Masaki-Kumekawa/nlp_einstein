@@ -13,6 +13,12 @@ real: setup real-data real-experiment paper-real
 	@echo "📊 実験結果: results/real_experiment_results.json"
 	@echo "📈 詳細レポート: results/experiment_report.txt"
 
+# チェックポイントから再開して完全実行
+resume-do: setup real-data resume-experiment paper-real
+	@echo "🎉 チェックポイントからの研究パイプライン完了！"
+	@echo "📄 論文: output/paper.tex"
+	@echo "📊 実験結果: results/real_experiment_results.json"
+
 # 環境セットアップ
 setup:
 	@echo "🔧 環境セットアップ中..."
@@ -32,6 +38,13 @@ real-experiment:
 	@echo "🚀 実際の実験実行中..."
 	@echo "⚠️ 注意: これは実際の機械学習実験です。完了まで数時間かかる可能性があります。"
 	@python real_experiment.py
+	@echo "✅ 実験完了"
+
+# チェックポイントから実験再開
+resume-experiment:
+	@echo "🔄 チェックポイントから実験再開中..."
+	@echo "使用方法: make resume-experiment CHECKPOINT=checkpoints/model_epoch_X_step_Y.pt"
+	@RESUME_CHECKPOINT=$(CHECKPOINT) python real_experiment.py
 	@echo "✅ 実験完了"
 
 # 実験結果に基づく論文生成

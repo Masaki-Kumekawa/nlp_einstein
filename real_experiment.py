@@ -169,6 +169,19 @@ class RealExperiment:
         train_losses = []
         start_time = time.time()
         
+        # Check for checkpoint resume
+        start_epoch = 0
+        resume_checkpoint = os.environ.get('RESUME_CHECKPOINT', None)
+        if resume_checkpoint:
+            logger.info(f"Resuming from checkpoint: {resume_checkpoint}")
+            checkpoint = torch.load(resume_checkpoint)
+            self.model.load_state_dict(checkpoint['model_state_dict'])
+            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            start_epoch = checkpoint['epoch'] + 1
+            if 'train_losses' in checkpoint:
+                train_losses = checkpoint['train_losses']
+            logger.info(f"Resumed from epoch {start_epoch}")
+        
         # Early stopping parameters
         best_loss = float('inf')
         patience = 3
@@ -176,7 +189,7 @@ class RealExperiment:
         min_improvement = 0.01
         max_epochs = self.config['training'].get('max_epochs', 20)  # Increase max epochs
         
-        for epoch in range(max_epochs):
+        for epoch in range(start_epoch, max_epochs):
             epoch_loss = 0
             progress_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}")
             
