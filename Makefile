@@ -41,6 +41,15 @@ paper-real:
 	@cd output && pdflatex paper.tex || echo "⚠️ PDF生成失敗：手動でpdflatex実行してください"
 	@echo "✅ 論文生成完了"
 
+# チェックポイントから評価して論文生成
+paper-checkpoint:
+	@echo "🔍 最新のチェックポイントから評価実行中..."
+	@python evaluate_from_checkpoint.py
+	@echo "📝 評価結果を基に論文生成中..."
+	@python generate_paper_from_real_results.py
+	@cd output && pdflatex paper.tex || echo "⚠️ PDF生成失敗：手動でpdflatex実行してください"
+	@echo "✅ チェックポイントからの論文生成完了"
+
 # 旧システム（デモ用）
 demo: setup demo-data demo-train demo-evaluate demo-paper
 	@echo "🎉 デモパイプライン完了！"
@@ -116,6 +125,7 @@ help:
 	@echo "主要コマンド:"
 	@echo "  make do          - 実際の研究実行（完全版）"
 	@echo "  make demo        - デモ版実行（高速）"
+	@echo "  make paper-checkpoint - 最新チェックポイントから論文生成"
 	@echo "  make clean       - 完全クリーンアップ（初期状態に戻す）"
 	@echo "  make clean-all   - データを含む完全リセット"
 	@echo "  make clean-light - 軽量クリーンアップ（データ保持）"
@@ -125,6 +135,7 @@ help:
 	@echo "  make real-data   - 実データセット取得"
 	@echo "  make real-experiment - 実験実行"
 	@echo "  make paper-real  - 実験結果から論文生成"
+	@echo "  make paper-checkpoint - チェックポイントから評価&論文生成"
 	@echo ""
 	@echo "その他:"
 	@echo "  make test        - テスト実行"
