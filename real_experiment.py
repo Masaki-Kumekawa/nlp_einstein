@@ -109,7 +109,7 @@ class RealExperiment:
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
         
         # Initialize model
-        self.model = GeometricBERT(config['model']).to(self.device)
+        self.model = GeometricBERT(config['model'], from_pretrained=True).to(self.device)
         
         # Add MLM head
         self.mlm_head = nn.Linear(
@@ -164,12 +164,19 @@ class RealExperiment:
         # Loss function
         criterion = nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
         
-        # Training loop
+        # Training loop with early stopping
         self.model.train()
         train_losses = []
         start_time = time.time()
         
-        for epoch in range(self.config['training']['num_epochs']):
+        # Early stopping parameters
+        best_loss = float('inf')
+        patience = 3
+        patience_counter = 0
+        min_improvement = 0.01
+        max_epochs = self.config['training'].get('max_epochs', 20)  # Increase max epochs
+        
+        for epoch in range(max_epochs):
             epoch_loss = 0
             progress_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}")
             
@@ -213,6 +220,30 @@ class RealExperiment:
             avg_loss = epoch_loss / len(train_loader)
             train_losses.append(avg_loss)
             logger.info(f"Epoch {epoch+1}: Average Loss = {avg_loss:.4f}")
+            
+            # Early stopping check
+            if avg_loss < best_loss - min_improvement:
+                best_loss = avg_loss
+                patience_counter = 0
+                logger.info(f"New best loss: {best_loss:.4f}")
+                # Save best model
+                save_checkpoint(
+                    self.model, optimizer, epoch, avg_loss,
+                    'models/geometric_bert_best.pt'
+                )
+            else:
+                patience_counter += 1
+                logger.info(f"No improvement for {patience_counter} epochs")
+                
+            # Stop if loss has converged
+            if patience_counter >= patience:
+                logger.info(f"Early stopping at epoch {epoch+1}. Loss converged.")
+                break
+                
+            # Also stop if loss is very low (well-trained)
+            if avg_loss < 0.5:
+                logger.info(f"Training completed. Loss reached {avg_loss:.4f}")
+                break
         
         training_time = time.time() - start_time
         
@@ -558,7 +589,8 @@ def load_config():
         'training': {
             'batch_size': 16,  # Smaller for memory efficiency
             'learning_rate': 2e-5,
-            'num_epochs': 3,
+            'num_epochs': 10,  # Increased from 3
+            'max_epochs': 20,  # Maximum before forced stop
             'warmup_steps': 1000,
             'weight_decay': 0.01,
             'max_length': 128,
@@ -571,13 +603,15 @@ def load_config():
         # GPU configuration - full scale
         config['training']['batch_size'] = 16
         config['training']['num_samples'] = 10000
-        config['training']['num_epochs'] = 3
+        config['training']['num_epochs'] = 10
+        config['training']['max_epochs'] = 20
         logger.info("GPU available, using full configuration")
     else:
         # CPU configuration - reduced but realistic
         config['training']['batch_size'] = 8
-        config['training']['num_samples'] = 2000
-        config['training']['num_epochs'] = 2
+        config['training']['num_samples'] = 5000  # Increased from 2000
+        config['training']['num_epochs'] = 10     # Increased from 2
+        config['training']['max_epochs'] = 20     # Added max epochs
         config['model']['num_hidden_layers'] = 6  # Smaller model for CPU
         config['model']['hidden_size'] = 512      # Reduced hidden size
         config['model']['num_attention_heads'] = 8  # Adjusted for 512/8=64 head size

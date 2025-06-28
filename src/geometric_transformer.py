@@ -105,12 +105,13 @@ class GeometricAttention(nn.Module):
             # Use the same metric for all heads
             metric_i = metric  # [batch_size, head_size, head_size]
             
-            # Stabilize matrix inversion
+            # Stabilize matrix inversion with stronger regularization
             identity = torch.eye(self.attention_head_size, device=metric_i.device).unsqueeze(0).expand(batch_size, -1, -1)
-            regularized_metric = metric_i + 0.01 * identity
+            regularized_metric = metric_i + 0.1 * identity
             
             try:
-                g_inv = torch.inverse(regularized_metric)
+                # Use pseudo-inverse for better stability
+                g_inv = torch.linalg.pinv(regularized_metric)
             except:
                 # Fallback to standard attention if inversion fails
                 g_inv = identity
@@ -167,7 +168,7 @@ class GeometricBertLayer(nn.Module):
 class GeometricBERT(nn.Module):
     """BERT model with geometric attention mechanisms."""
     
-    def __init__(self, config_dict):
+    def __init__(self, config_dict, from_pretrained=True):
         super().__init__()
         
         # Create BERT config
@@ -187,23 +188,65 @@ class GeometricBERT(nn.Module):
         self.config.hidden_dropout_prob = 0.1
         self.config.layer_norm_eps = 1e-12
         
-        # Initialize BERT embeddings
-        self.embeddings = nn.Embedding(self.config.vocab_size, self.config.hidden_size)
-        self.position_embeddings = nn.Embedding(self.config.max_position_embeddings, self.config.hidden_size)
-        self.token_type_embeddings = nn.Embedding(self.config.type_vocab_size, self.config.hidden_size)
-        self.LayerNorm = nn.LayerNorm(self.config.hidden_size, eps=self.config.layer_norm_eps)
-        self.dropout = nn.Dropout(self.config.hidden_dropout_prob)
+        if from_pretrained:
+            # Load pre-trained BERT model
+            pretrained_bert = BertModel.from_pretrained('bert-base-uncased')
+            
+            # Copy embeddings from pre-trained BERT
+            self.embeddings = pretrained_bert.embeddings.word_embeddings
+            self.position_embeddings = pretrained_bert.embeddings.position_embeddings
+            self.token_type_embeddings = pretrained_bert.embeddings.token_type_embeddings
+            self.LayerNorm = pretrained_bert.embeddings.LayerNorm
+            self.dropout = pretrained_bert.embeddings.dropout
+            
+            # Initialize geometric encoder layers with pre-trained weights
+            self.encoder = nn.ModuleList()
+            for i in range(self.config.num_hidden_layers):
+                if i < len(pretrained_bert.encoder.layer):
+                    # Create geometric layer and copy non-attention weights
+                    geom_layer = GeometricBertLayer(self.config)
+                    orig_layer = pretrained_bert.encoder.layer[i]
+                    
+                    # Copy feed-forward components
+                    geom_layer.intermediate.weight.data = orig_layer.intermediate.dense.weight.data.clone()
+                    geom_layer.intermediate.bias.data = orig_layer.intermediate.dense.bias.data.clone()
+                    geom_layer.output.weight.data = orig_layer.output.dense.weight.data.clone()
+                    geom_layer.output.bias.data = orig_layer.output.dense.bias.data.clone()
+                    geom_layer.LayerNorm1.weight.data = orig_layer.attention.output.LayerNorm.weight.data.clone()
+                    geom_layer.LayerNorm1.bias.data = orig_layer.attention.output.LayerNorm.bias.data.clone()
+                    geom_layer.LayerNorm2.weight.data = orig_layer.output.LayerNorm.weight.data.clone()
+                    geom_layer.LayerNorm2.bias.data = orig_layer.output.LayerNorm.bias.data.clone()
+                    
+                    # Copy attention projection weights (Q, K, V)
+                    geom_layer.attention.query.weight.data = orig_layer.attention.self.query.weight.data.clone()
+                    geom_layer.attention.query.bias.data = orig_layer.attention.self.query.bias.data.clone()
+                    geom_layer.attention.key.weight.data = orig_layer.attention.self.key.weight.data.clone()
+                    geom_layer.attention.key.bias.data = orig_layer.attention.self.key.bias.data.clone()
+                    geom_layer.attention.value.weight.data = orig_layer.attention.self.value.weight.data.clone()
+                    geom_layer.attention.value.bias.data = orig_layer.attention.self.value.bias.data.clone()
+                    
+                    self.encoder.append(geom_layer)
+                else:
+                    # Create new geometric layer for additional layers
+                    self.encoder.append(GeometricBertLayer(self.config))
+        else:
+            # Initialize from scratch (original behavior)
+            self.embeddings = nn.Embedding(self.config.vocab_size, self.config.hidden_size)
+            self.position_embeddings = nn.Embedding(self.config.max_position_embeddings, self.config.hidden_size)
+            self.token_type_embeddings = nn.Embedding(self.config.type_vocab_size, self.config.hidden_size)
+            self.LayerNorm = nn.LayerNorm(self.config.hidden_size, eps=self.config.layer_norm_eps)
+            self.dropout = nn.Dropout(self.config.hidden_dropout_prob)
+            
+            # Geometric encoder layers
+            self.encoder = nn.ModuleList([
+                GeometricBertLayer(self.config) for _ in range(self.config.num_hidden_layers)
+            ])
+            
+            # Initialize weights
+            self.apply(self._init_weights)
         
-        # Geometric encoder layers
-        self.encoder = nn.ModuleList([
-            GeometricBertLayer(self.config) for _ in range(self.config.num_hidden_layers)
-        ])
-        
-        # Global metric tensor for similarity computation
+        # Global metric tensor for similarity computation (always new)
         self.global_metric = MetricTensor(self.config.hidden_size, rank=self.config.metric_rank)
-        
-        # Initialize weights
-        self.apply(self._init_weights)
         
     def _init_weights(self, module):
         if isinstance(module, nn.Linear):
@@ -317,4 +360,5 @@ class GeometricBERT(nn.Module):
     
     def similarity_from_distance(self, distances):
         """Convert geodesic distances to similarity scores."""
-        return 1.0 / (1.0 + distances)
+        # Use exponential decay for better similarity scaling
+        return torch.exp(-distances.squeeze())

@@ -5,7 +5,8 @@
       "Bash(python:*)",
       "Bash(make:*)",
       "Bash(pip install:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }
