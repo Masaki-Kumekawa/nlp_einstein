@@ -1,0 +1,71 @@
+# 幾何学的言語モデル研究：完全自動化Makefile
+# 使用方法: make do
+
+.PHONY: do setup data train evaluate paper clean help
+
+# メインターゲット：全工程の自動実行
+do: setup data train evaluate paper
+	@echo "🎉 研究パイプライン完了！"
+	@echo "📄 論文: output/論文.pdf"
+	@echo "📊 結果: results/experiment_results.json"
+
+# 環境セットアップ
+setup:
+	@echo "🔧 環境セットアップ中..."
+	@pip install torch transformers scipy matplotlib seaborn pandas datasets pytest scikit-learn
+	@mkdir -p data results output src
+	@echo "✅ 環境セットアップ完了"
+
+# データ準備
+data:
+	@echo "📊 データ準備中..."
+	@python データパイプライン.py
+	@echo "✅ データ準備完了"
+
+# モデル訓練
+train:
+	@echo "🚀 モデル訓練中..."
+	@python -c "import 実験コード; 実験コード.run_training()"
+	@echo "✅ 訓練完了"
+
+# 評価実行
+evaluate:
+	@echo "📈 評価実行中..."
+	@python -c "import 実験コード; 実験コード.run_evaluation()"
+	@echo "✅ 評価完了"
+
+# 論文生成
+paper:
+	@echo "📝 論文生成中..."
+	@python -c "import 実験コード; 実験コード.generate_paper()"
+	@pdflatex -output-directory=output output/論文.tex || echo "⚠️ PDF生成失敗：手動でpdflatex実行してください"
+	@echo "✅ 論文生成完了"
+
+# テスト実行
+test:
+	@echo "🧪 テスト実行中..."
+	@python テスト駆動実装.py
+	@pytest -v テスト駆動実装.py::TestMetricTensor
+	@echo "✅ テスト完了"
+
+# クリーンアップ
+clean:
+	@echo "🧹 クリーンアップ中..."
+	@rm -rf data/processed results output
+	@rm -f *.pyc __pycache__
+	@echo "✅ クリーンアップ完了"
+
+# ヘルプ
+help:
+	@echo "幾何学的言語モデル研究自動化システム"
+	@echo ""
+	@echo "使用方法:"
+	@echo "  make do      - 全工程を自動実行（推奨）"
+	@echo "  make setup   - 環境セットアップのみ"
+	@echo "  make data    - データ準備のみ"
+	@echo "  make train   - 訓練のみ"
+	@echo "  make evaluate- 評価のみ"
+	@echo "  make paper   - 論文生成のみ"
+	@echo "  make test    - テスト実行"
+	@echo "  make clean   - ファイル削除"
+	@echo "  make help    - このヘルプ"

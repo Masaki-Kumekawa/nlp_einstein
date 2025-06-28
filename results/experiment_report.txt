@@ -1,0 +1,26 @@
+GEOMETRIC LANGUAGE MODEL EXPERIMENT REPORT
+==================================================
+
+Started: 2025-06-28T17:23:54.074671
+Ended: 2025-06-28T17:24:16.323925
+Device: cpu
+
+TRAINING RESULTS:
+Final Loss: 10.5632
+Training Time: 0.00 hours
+
+SIMILARITY EVALUATION:
+wordsim353: Spearman=-0.013, Pearson=0.102
+simlex999: Spearman=-0.002, Pearson=0.002
+scws_sample: Spearman=0.800, Pearson=0.926
+cosimlx_sample: Spearman=-0.100, Pearson=0.022
+
+IMPROVEMENTS OVER BERT:
+wordsim353: -101.9%
+simlex999: -100.4%
+
+EFFICIENCY METRICS:
+inference_speed: 144.3 samples/sec
+avg_inference_time_ms: 6.93
+memory_usage_mb: 0.0
+model_parameters: 9078784
