@@ -16,7 +16,6 @@ from transformers import BertTokenizer
 # Import our modules
 from src.geometric_transformer import GeometricBERT
 from src.evaluation import SimilarityEvaluator
-from real_experiment import GeometricLanguageExperiment
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
