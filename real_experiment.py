@@ -580,6 +580,7 @@ def load_config():
         config['training']['num_epochs'] = 2
         config['model']['num_hidden_layers'] = 6  # Smaller model for CPU
         config['model']['hidden_size'] = 512      # Reduced hidden size
+        config['model']['num_attention_heads'] = 8  # Adjusted for 512/8=64 head size
         config['model']['intermediate_size'] = 1024
         config['model']['metric_rank'] = 32
         logger.warning("No GPU available, using reduced CPU configuration")
