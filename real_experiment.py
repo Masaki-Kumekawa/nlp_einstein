@@ -205,7 +205,7 @@ class RealExperiment:
         patience = 3
         patience_counter = 0
         min_improvement = 0.01
-        max_epochs = self.config['training'].get('max_epochs', 20)  # Increase max epochs
+        max_epochs = self.config['training'].get('max_epochs', 2)  # Increase max epochs
         
         for epoch in range(start_epoch, max_epochs):
             epoch_loss = 0
