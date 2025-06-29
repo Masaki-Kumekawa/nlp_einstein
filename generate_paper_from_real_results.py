@@ -95,7 +95,7 @@ def generate_paper_with_real_results(results):
         # Computational metrics
         'TRAINING_TIME': _format_training_time(training_results),
         'INFERENCE_SPEED': efficiency_metrics.get('inference_speed', 'N/A'),
-        'MEMORY_USAGE': efficiency_metrics.get('memory_usage_mb', 'N/A') + (' MB' if 'memory_usage_mb' in efficiency_metrics else ''),
+        'MEMORY_USAGE': f"{efficiency_metrics.get('memory_usage_mb', 'N/A')}{' MB' if 'memory_usage_mb' in efficiency_metrics else ''}",
         'OVERHEAD_PERCENTAGE': _calculate_overhead(efficiency_metrics),
         
         # Visualization paths
